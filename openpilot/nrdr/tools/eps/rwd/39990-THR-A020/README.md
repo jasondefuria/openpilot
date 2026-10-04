@@ -1,16 +1,30 @@
 # Honda Odyssey 39990-THR-A020
 
-These files have passed offline container, payload reconstruction, and checksum validation. Both RWD headers list `39990-THR-A020`, `39990-THR-A010`, and `39990-THR,A020` as source identity lookup entries. The A010 entry matches the supplied A010/A020 stock container; ECU acceptance and hardware compatibility have not been verified.
-
 | File | Payload | Embedded identity |
 | --- | --- | --- |
-| `stock_39990-THR-A020.rwd` | Original stock application payload, with a three-ID container header | `39990-THR-A020` |
-| `mod25xv2-39990-THR,A020.rwd` | Experimental R2 calibration with modified firmware identity | `39990-THR,A020` |
+| `stock_39990-THR-A020.rwd` | Stock application; three-ID container header | `39990-THR-A020` |
+| `mod25xv2-39990-THR,A020.rwd` | Historical R2 calibration; known incorrect runtime CRC at `0x6FF7C` | `39990-THR,A020` |
+| `mod25xv3-39990-THR,A020.rwd` | Same calibration as v2, with runtime CRC and dependent checksums corrected | `39990-THR,A020` |
 
-Despite the `mod25xv2` filename, the modified payload matches R2, including the mirrored `0x67xxx` table changes. It is not uniform 2.5x scaling across all tables or operating conditions. Physical torque has not been measured; 2.5x physical assist is not established.
+**V2 has a known runtime CRC mismatch.** Earlier verification covered the container and application sums but missed this block CRC. It is retained for comparison, not as the corrected image.
 
-Both files are 475,237 bytes, with application start `0xC000` and payload length `0x74000`. Each encryption-key header contains exactly one value. Container checksums and internal application checksums pass; the complete application 16-bit word sum is zero.
+V3 changes only eight decoded checksum bytes relative to v2: the CRC at `0x6FF7C`, application checksum A at `0x7FF80`, and C at `0x7FFFE`. The RWD container checksum is also updated. No executable code, torque calibration, identity, header, or minimum-speed values changed.
 
-Offline integrity does not establish ECU flash acceptance, safe vehicle operation, or compatible openpilot controller gains. These files are provided for research and controlled bench evaluation. No automatic flashing or controller tuning is configured by this folder.
+| Offline check | Stock | V3 |
+| --- | --- | --- |
+| CRC-32/BZIP2 of `0x40000–0x4FF5F`, stored at `0x4FF7C` | `134AE5B1` | `134AE5B1` |
+| CRC-32/BZIP2 of `0x60000–0x6FF5F`, stored at `0x6FF7C` | `9A305122` | `6956DAFD` |
+| Application checksum A | `D0CA` | `C15D` |
+| Application checksum C | `A6E0` | `C5BA` |
+| Complete application BE16 word sum | `0000` | `0000` |
+| RWD container checksum | `045553B8` | `0455557E` |
 
-Verify file integrity with `shasum -a 256 -c SHA256SUMS` from this directory.
+All listed stock/V3 values reproduce. Both application markers (`4837` and `B7C8`) and the cipher roundtrip also check correctly.
+
+All three files are 475,237 bytes, with application start `0xC000` and payload length `0x74000`. Headers list `39990-THR-A020`, `39990-THR-A010`, and `39990-THR,A020` as source identity lookup entries; inclusion does not establish ECU hardware compatibility. Each encryption-key header contains exactly one value.
+
+V3 retains R2's banks 1–3 main/reference torque changes. Banks 4–7 remain stock. Minimum-speed calibration remains 10 counts in banks 1–3 and 70 in banks 4–7. The filename does not establish uniform 2.5x scaling or measured physical torque. F181 cannot distinguish v2 from v3 because their embedded identities match.
+
+Offline integrity does not establish ECU acceptance or physical steering safety. No automatic flashing or controller tuning is configured by this folder.
+
+Verify file hashes with `shasum -a 256 -c SHA256SUMS` from this directory.
